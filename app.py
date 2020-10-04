@@ -12,16 +12,20 @@ from gwosc.api import fetch_event_json
 from copy import deepcopy
 import base64
 
+st.beta_set_page_config(layout="wide")
+row0_spacer1, row0_1, row0_spacer2 = st.beta_columns((.1,2.1,.1))
+row1_spacer1, row1_1, row1_spacer2, row1_2, row1_spacer3 = st.beta_columns((.1,1,.1,1,.1))
+row2_spacer1, row2_1, row2_spacer2, row2_2, row2_spacer3 = st.beta_columns((.1,1,.1,1,.1))
+row3_spacer1, row3_1, row3_spacer2 = st.beta_columns((.1,2.1,.1))
 # -- Default detector list
 detectorlist = ['H1','L1', 'V1']
 
 # Title the app
-st.title('Gravitational Wave Quickview App')
-
-st.markdown("""
- * Use the menu at left to select data and set plot parameters
- * Your plots will appear below
-""")
+with row0_1:
+    st.title('Gravitational Wave Quickview App')
+    st.markdown("""
+     Use the menu at left 👈 to select data and set plot parameters. Your plots will appear below.
+    """)
 
 @st.cache   #-- Magic command to cache data
 def load_gw(t0, detector):
@@ -43,16 +47,16 @@ select_event = st.sidebar.selectbox('How do you want to find data?',
                                     ['By event name', 'By GPS'])
 
 if select_event == 'By GPS':
-    # -- Set a GPS time:        
+    # -- Set a GPS time:
     str_t0 = st.sidebar.text_input('GPS Time', '1126259462.4')    # -- GW150914
     t0 = float(str_t0)
 
     st.sidebar.markdown("""
     Example times in the H1 detector:
-    * 1126259462.4    (GW150914) 
-    * 1187008882.4    (GW170817) 
+    * 1126259462.4    (GW150914)
+    * 1187008882.4    (GW170817)
     * 933200215       (hardware injection)
-    * 1132401286.33   (Koi Fish Glitch) 
+    * 1132401286.33   (Koi Fish Glitch)
     """)
 
 else:
@@ -60,24 +64,27 @@ else:
     t0 = datasets.event_gps(chosen_event)
     detectorlist = list(datasets.event_detectors(chosen_event))
     detectorlist.sort()
-    st.subheader(chosen_event)
-    
+
+    with row1_2:
+        st.subheader(chosen_event)
+
     # -- Experiment to display masses
     try:
         jsoninfo = fetch_event_json(chosen_event)
-        for name, nameinfo in jsoninfo['events'].items():        
-            st.write('Mass 1:', nameinfo['mass_1_source'], 'M$_{\odot}$')
-            st.write('Mass 2:', nameinfo['mass_2_source'], 'M$_{\odot}$')
-            #st.write('Distance:', int(nameinfo['luminosity_distance']), 'Mpc')
-            st.write('Network SNR:', int(nameinfo['network_matched_filter_snr']))
-            eventurl = 'https://gw-osc.org/eventapi/html/event/{}'.format(chosen_event)
-            st.markdown('Event page: {}'.format(eventurl))
-            st.write('\n')
+        for name, nameinfo in jsoninfo['events'].items():
+            with row1_2:
+                st.write('Mass 1:', nameinfo['mass_1_source'], 'M$_{\odot}$')
+                st.write('Mass 2:', nameinfo['mass_2_source'], 'M$_{\odot}$')
+                #st.write('Distance:', int(nameinfo['luminosity_distance']), 'Mpc')
+                st.write('Network SNR:', int(nameinfo['network_matched_filter_snr']))
+                eventurl = 'https://gw-osc.org/eventapi/html/event/{}'.format(chosen_event)
+                st.markdown('Event page: {}'.format(eventurl))
+                st.write('\n')
     except:
         pass
 
 
-    
+
 #-- Choose detector as H1, L1, or V1
 detector = st.sidebar.selectbox('Detector', detectorlist)
 
@@ -99,15 +106,17 @@ qrange = (int(qcenter*0.8), int(qcenter*1.2))
 
 
 #-- Create a text element and let the reader know the data is loading.
-strain_load_state = st.text('Loading data...this may take a minute')
+with row0_1:
+    strain_load_state = st.text('Loading data...this may take a minute')
 try:
     strain_data = load_gw(t0, detector)
 except:
-    st.text('Data load failed.  Try a different time and detector pair.')
-    st.text('Problems can be reported to gwosc@igwn.org')
+    row0_1.text('Data load failed.  Try a different time and detector pair.')
+    row0_1.text('Problems can be reported to gwosc@igwn.org')
     raise st.ScriptRunner.StopException
-    
-strain_load_state.text('Loading data...done!')
+
+with row0_1:
+    strain_load_state.text('Loading data...done!')
 
 #-- Make a time series plot
 
@@ -117,17 +126,18 @@ cropend   = t0+0.1
 cropstart = t0 - dt
 cropend   = t0 + dt
 
-st.subheader('Raw data')
+
 center = int(t0)
 strain = deepcopy(strain_data)
 fig1 = strain.crop(cropstart, cropend).plot()
 #fig1 = cropped.plot()
-st.pyplot(fig1, clear_figure=True)
+with row1_1:
+    st.subheader('Raw data')
+    st.pyplot(fig1, clear_figure=True)
 
 
 # -- Try whitened and band-passed plot
 # -- Whiten and bandpass data
-st.subheader('Whitened and Band-passed Data')
 
 if whiten:
     white_data = strain.whiten()
@@ -137,7 +147,10 @@ else:
 
 bp_cropped = bp_data.crop(cropstart, cropend)
 fig3 = bp_cropped.plot()
-st.pyplot(fig3, clear_figure=True)
+
+with row2_1:
+    st.subheader('Whitened and Band-passed Data')
+    st.pyplot(fig3, clear_figure=True)
 
 # -- Allow data download
 download = {'Time':bp_cropped.times, 'Strain':bp_cropped.value}
@@ -145,10 +158,11 @@ df = pd.DataFrame(download)
 csv = df.to_csv(index=False)
 b64 = base64.b64encode(csv.encode()).decode()  # some strings <-> bytes conversions necessary here
 href = f'<a href="data:file/csv;base64,{b64}">Download Data as CSV File</a>'
-st.markdown(href, unsafe_allow_html=True)
+with row1_2:
+    st.markdown(href, unsafe_allow_html=True)
 
 
-st.subheader('Q-transform')
+
 hq = strain.q_transform(outseg=(t0-dt, t0+dt), qrange=qrange)
 fig4 = hq.plot()
 ax = fig4.gca()
@@ -156,16 +170,19 @@ fig4.colorbar(label="Normalised energy", vmax=vmax, vmin=0)
 ax.grid(False)
 ax.set_yscale('log')
 ax.set_ylim(bottom=15)
-st.pyplot(fig4, clear_figure=True)
+with row2_2:
+    st.subheader('Q-transform')
+    st.pyplot(fig4, clear_figure=True)
 
 
 
-st.subheader("About this app")
-st.markdown("""
-This app displays data from LIGO, Virgo, and GEO downloaded from
-the Gravitational Wave Open Science Center at https://gw-openscience.org .
+with row3_1:
+    st.subheader("About this app")
+    st.markdown("""
+    This app displays data from LIGO, Virgo, and GEO downloaded from
+    the Gravitational Wave Open Science Center at https://gw-openscience.org .
 
 
-You can see how this works in the [Quickview Jupyter Notebook](https://github.com/losc-tutorial/quickview)
+    You can see how this works in the [Quickview Jupyter Notebook](https://github.com/losc-tutorial/quickview)
 
-""")
+    """)
