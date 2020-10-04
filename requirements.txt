@@ -1,4 +1,4 @@
-streamlit==0.66.0
+streamlit-nightly
 gwpy
 matplotlib
 numpy
