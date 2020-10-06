@@ -13,15 +13,17 @@ from copy import deepcopy
 import base64
 
 st.beta_set_page_config(layout="wide")
-row0_spacer1, row0_1, row0_spacer2 = st.beta_columns((.1,2.1,.1))
-row1_spacer1, row1_1, row1_spacer2, row1_2, row1_spacer3 = st.beta_columns((.1,1,.1,1,.1))
-row2_spacer1, row2_1, row2_spacer2, row2_2, row2_spacer3 = st.beta_columns((.1,1,.1,1,.1))
-row3_spacer1, row3_1, row3_spacer2 = st.beta_columns((.1,2.1,.1))
 # -- Default detector list
 detectorlist = ['H1','L1', 'V1']
 
+row0 = st.beta_container()
+row1 = st.beta_container()
+row1a, row1b, row1c, row1d = st.beta_columns((1,1,1,3))
+row2_1, row2_2 = st.beta_columns(2)
+row3 = st.beta_container()
+
 # Title the app
-with row0_1:
+with row0:
     st.title('Gravitational Wave Quickview App')
     st.markdown("""
      Use the menu at left 👈 to select data and set plot parameters. Your plots will appear below.
@@ -65,18 +67,22 @@ else:
     detectorlist = list(datasets.event_detectors(chosen_event))
     detectorlist.sort()
 
-    with row1_2:
-        st.subheader(chosen_event)
+    with row1:
+        st.header('Showing data for event {}'.format(chosen_event))
+        st.write('')
 
     # -- Experiment to display masses
     try:
         jsoninfo = fetch_event_json(chosen_event)
         for name, nameinfo in jsoninfo['events'].items():
-            with row1_2:
+            with row1a:
                 st.write('Mass 1:', nameinfo['mass_1_source'], 'M$_{\odot}$')
+            with row1b:
                 st.write('Mass 2:', nameinfo['mass_2_source'], 'M$_{\odot}$')
                 #st.write('Distance:', int(nameinfo['luminosity_distance']), 'Mpc')
+            with row1c:
                 st.write('Network SNR:', int(nameinfo['network_matched_filter_snr']))
+            with row1d:
                 eventurl = 'https://gw-osc.org/eventapi/html/event/{}'.format(chosen_event)
                 st.markdown('Event page: {}'.format(eventurl))
                 st.write('\n')
@@ -106,16 +112,17 @@ qrange = (int(qcenter*0.8), int(qcenter*1.2))
 
 
 #-- Create a text element and let the reader know the data is loading.
-with row0_1:
-    strain_load_state = st.text('Loading data...this may take a minute')
-try:
-    strain_data = load_gw(t0, detector)
-except:
-    row0_1.text('Data load failed.  Try a different time and detector pair.')
-    row0_1.text('Problems can be reported to gwosc@igwn.org')
-    raise st.ScriptRunner.StopException
 
-with row0_1:
+with row0:
+    strain_load_state = st.text('Loading data...this may take a minute')
+    try:
+        strain_data = load_gw(t0, detector)
+    except:
+        st.text('Data load failed.  Try a different time and detector pair.')
+        st.text('Problems can be reported to gwosc@igwn.org')
+        raise st.ScriptRunner.StopException
+
+
     strain_load_state.text('Loading data...done!')
 
 #-- Make a time series plot
@@ -131,7 +138,8 @@ center = int(t0)
 strain = deepcopy(strain_data)
 fig1 = strain.crop(cropstart, cropend).plot()
 #fig1 = cropped.plot()
-with row1_1:
+
+with row2_1:
     st.subheader('Raw data')
     st.pyplot(fig1, clear_figure=True)
 
@@ -148,7 +156,7 @@ else:
 bp_cropped = bp_data.crop(cropstart, cropend)
 fig3 = bp_cropped.plot()
 
-with row2_1:
+with row2_2:
     st.subheader('Whitened and Band-passed Data')
     st.pyplot(fig3, clear_figure=True)
 
@@ -158,7 +166,7 @@ df = pd.DataFrame(download)
 csv = df.to_csv(index=False)
 b64 = base64.b64encode(csv.encode()).decode()  # some strings <-> bytes conversions necessary here
 href = f'<a href="data:file/csv;base64,{b64}">Download Data as CSV File</a>'
-with row1_2:
+with row2_1:
     st.markdown(href, unsafe_allow_html=True)
 
 
@@ -170,19 +178,16 @@ fig4.colorbar(label="Normalised energy", vmax=vmax, vmin=0)
 ax.grid(False)
 ax.set_yscale('log')
 ax.set_ylim(bottom=15)
-with row2_2:
+with row3:
     st.subheader('Q-transform')
     st.pyplot(fig4, clear_figure=True)
 
 
 
-with row3_1:
-    st.subheader("About this app")
-    st.markdown("""
-    This app displays data from LIGO, Virgo, and GEO downloaded from
-    the Gravitational Wave Open Science Center at https://gw-openscience.org .
+st.subheader("About this app")
+st.markdown("""
+This app displays data from LIGO, Virgo, and GEO downloaded from
+the Gravitational Wave Open Science Center at https://gw-openscience.org.
+You can see how this works in the [Quickview Jupyter Notebook](https://github.com/losc-tutorial/quickview)
 
-
-    You can see how this works in the [Quickview Jupyter Notebook](https://github.com/losc-tutorial/quickview)
-
-    """)
+""")
